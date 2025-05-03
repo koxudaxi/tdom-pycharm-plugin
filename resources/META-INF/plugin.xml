@@ -7,7 +7,7 @@
     <depends>com.intellij.modules.python</depends>
     <depends>org.toml.lang</depends>
     <extensions defaultExtensionNs="com.intellij">
-        <multiHostInjector implementation="com.koxudaxi.tdom.TemplateStringsInjector"/>
+<!--        <multiHostInjector implementation="com.koxudaxi.tdom.TemplateStringsInjector"/>-->
         <lang.inspectionSuppressor language="Python"
                                    implementationClass="com.koxudaxi.tdom.TemplateStringsTypeIgnoreInspectionSuppressor"/>
         <localInspection implementationClass="com.koxudaxi.tdom.TdomInspection" displayName="HtmpyInspection" shortName="HtmpyInspection" enabledByDefault="true"

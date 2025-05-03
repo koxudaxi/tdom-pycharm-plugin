@@ -1,9 +1,19 @@
 package com.koxudaxi.tdom.completion
 
+import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.icons.AllIcons
+import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiReference
+import com.intellij.psi.impl.source.resolve.FileContextUtil
+import com.intellij.psi.xml.XmlTokenType
 import com.jetbrains.python.PyNames
 import com.jetbrains.python.psi.PyUtil
+import com.koxudaxi.tdom.collectComponents
+import com.koxudaxi.tdom.getContextForCodeCompletion
+import com.koxudaxi.tdom.isHtmpy
 
 class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.CompletionContributor() {
     fun getName(name: String, parameters: com.intellij.codeInsight.completion.CompletionParameters): String {
@@ -15,8 +25,8 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
     }
     init {
         extend(
-            _root_ide_package_.com.intellij.codeInsight.completion.CompletionType.BASIC,
-            _root_ide_package_.com.intellij.patterns.PlatformPatterns.psiElement(),
+            CompletionType.BASIC,
+            PlatformPatterns.psiElement(),
             object : com.intellij.codeInsight.completion.CompletionProvider<com.intellij.codeInsight.completion.CompletionParameters>() {
                 override fun addCompletions(
                     parameters: com.intellij.codeInsight.completion.CompletionParameters,
@@ -25,18 +35,18 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
                 ) {
                     val position = parameters.position
                     val type = position.node.elementType
-                    if (type !== _root_ide_package_.com.intellij.psi.xml.XmlTokenType.XML_DATA_CHARACTERS) {
+                    if (type !== XmlTokenType.XML_DATA_CHARACTERS) {
                         return
                     }
                     val hostElement =
-                        position.parent.containingFile.getUserData(_root_ide_package_.com.intellij.psi.impl.source.resolve.FileContextUtil.INJECTED_IN_ELEMENT)?.element as? com.jetbrains.python.psi.PyStringLiteralExpression
+                        position.parent.containingFile.getUserData(FileContextUtil.INJECTED_IN_ELEMENT)?.element as? com.jetbrains.python.psi.PyStringLiteralExpression
                             ?: return
                     val pyFormattedStringElement = hostElement.firstChild as? com.jetbrains.python.psi.PyFormattedStringElement
                         ?: return
                     val typeContext =
-                        _root_ide_package_.com.koxudaxi.tdom.getContextForCodeCompletion(pyFormattedStringElement)
-                    if (!_root_ide_package_.com.koxudaxi.tdom.isHtmpy(pyFormattedStringElement, typeContext)) return
-                    _root_ide_package_.com.koxudaxi.tdom.collectComponents(
+                        getContextForCodeCompletion(pyFormattedStringElement)
+                    if (!isHtmpy(pyFormattedStringElement, typeContext)) return
+                    collectComponents(
                         hostElement,
                         { resolvedComponent, tag, _, keys ->
                             if (tag.range.contains(position.textOffset)) {
@@ -51,18 +61,18 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
                                                 val attribute = resolvedComponent.findClassAttribute(name, true, null)
                                                 if (attribute != null) {
                                                     val element =
-                                                        _root_ide_package_.com.intellij.codeInsight.completion.PrioritizedLookupElement.withGrouping(
-                                                            _root_ide_package_.com.intellij.codeInsight.lookup.LookupElementBuilder
+                                                        PrioritizedLookupElement.withGrouping(
+                                                            LookupElementBuilder
                                                                 .createWithSmartPointer(
                                                                     getName(name, parameters),
                                                                     attribute
                                                                 )
                                                                 .withTypeText(typeContext.getType(attribute)?.name)
-                                                                .withIcon(_root_ide_package_.com.intellij.icons.AllIcons.Nodes.Field),
+                                                                .withIcon(AllIcons.Nodes.Field),
                                                             1
                                                         )
                                                     result.addElement(
-                                                        _root_ide_package_.com.intellij.codeInsight.completion.PrioritizedLookupElement.withPriority(
+                                                        PrioritizedLookupElement.withPriority(
                                                             element,
                                                             100.0
                                                         )
@@ -81,18 +91,18 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
                                                     resolvedComponent.parameterList.findParameterByName(name)
                                                 if (parameter != null) {
                                                     val element =
-                                                        _root_ide_package_.com.intellij.codeInsight.completion.PrioritizedLookupElement.withGrouping(
-                                                            _root_ide_package_.com.intellij.codeInsight.lookup.LookupElementBuilder
+                                                        PrioritizedLookupElement.withGrouping(
+                                                            LookupElementBuilder
                                                                 .createWithSmartPointer(
                                                                     getName(name, parameters),
                                                                     parameter
                                                                 )
                                                                 .withTypeText(typeContext.getType(parameter)?.name)
-                                                                .withIcon(_root_ide_package_.com.intellij.icons.AllIcons.Nodes.Field),
+                                                                .withIcon(AllIcons.Nodes.Field),
                                                             1
                                                         )
                                                     result.addElement(
-                                                        _root_ide_package_.com.intellij.codeInsight.completion.PrioritizedLookupElement.withPriority(
+                                                        PrioritizedLookupElement.withPriority(
                                                             element,
                                                             100.0
                                                         )
