@@ -11,6 +11,7 @@ import com.jetbrains.python.codeInsight.PyInjectionUtil
 import com.jetbrains.python.codeInsight.PyInjectorBase
 import com.jetbrains.python.psi.*
 import com.jetbrains.python.psi.resolve.PyResolveContext
+import com.jetbrains.python.psi.types.PyClassLikeType
 import com.jetbrains.python.psi.types.PyClassType
 import com.jetbrains.python.psi.types.PyType
 import com.jetbrains.python.psi.types.TypeEvalContext
@@ -48,13 +49,14 @@ class TemplateStringsInjector : PyInjectorBase() {
 
     private fun getLanguageFromText(text: String): Language? = LANGUAGES[text.lowercase()]
 
+    private fun isTemplateType(pyClassLikeType: PyClassLikeType, context: TypeEvalContext): Boolean =
+        pyClassLikeType.name == TEMPLATE_TYPE_NAME && pyClassLikeType.getSuperClassTypes(context).filterNotNull().any { templateSuperClass -> templateSuperClass.classQName == TYPING_PROTOCOLS }
+
     private fun getLanguageFromTemplateType(pyType: PyType, context: TypeEvalContext): Language? {
         val pyClassType = pyType as? PyClassType ?: return null
-        val isTemplateType = pyClassType.getSuperClassTypes(context)
-            .any {
-                it.name == TEMPLATE_TYPE_NAME && it.getSuperClassTypes(context).any { templateSuperClass -> templateSuperClass.classQName == TYPING_PROTOCOLS }
-            }
-        if (!isTemplateType) return null
+        if (!isTemplateType(pyClassType, context)) {
+            if (!pyClassType.getSuperClassTypes(context).filterNotNull().any { isTemplateType(it, context) }) return null
+        }
         val sourceAttribute = pyClassType.pyClass.findClassAttribute(SOURCE_ATTRIBUTE_NAME, true, context) ?: return null
         val annotation = sourceAttribute.annotation?.children?.filterIsInstance<PySubscriptionExpression>()?.firstOrNull() ?: return null
         if (annotation.children.size < 2) return null
