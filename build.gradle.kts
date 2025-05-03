@@ -2,6 +2,8 @@ import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
+import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
+import java.util.jar.JarFile
 
 fun properties(key: String) = providers.gradleProperty(key)
 fun environment(key: String) = providers.environmentVariable(key)
@@ -14,14 +16,18 @@ plugins {
     alias(libs.plugins.kover) // Gradle Kover Plugin
 }
 
+
 group = properties("pluginGroup").get()
 version = properties("pluginVersion").get()
+
 
 // Configure project's dependencies
 repositories {
     mavenCentral()
+    maven("https://oss.sonatype.org/content/repositories/snapshots/")
     intellijPlatform {
         defaultRepositories()
+        localPlatformArtifacts()
         snapshots()
     }
 }
@@ -50,7 +56,7 @@ intellijPlatform {
             val start = "<!-- Plugin description -->"
             val end = "<!-- Plugin description end -->"
 
-            with (it.lines()) {
+            with(it.lines()) {
                 if (!containsAll(listOf(start, end))) {
                     throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
                 }
@@ -61,10 +67,10 @@ intellijPlatform {
         changeNotes = properties("pluginVersion").map { pluginVersion ->
             with(project.changelog) {
                 renderItem(
-                        (getOrNull(pluginVersion) ?: getUnreleased())
-                                .withHeader(false)
-                                .withEmptySections(false),
-                        Changelog.OutputType.HTML,
+                    (getOrNull(pluginVersion) ?: getUnreleased())
+                        .withHeader(false)
+                        .withEmptySections(false),
+                    Changelog.OutputType.HTML,
                 )
             }
         }
@@ -120,17 +126,17 @@ tasks {
     }
 }
 dependencies {
-    compileOnly("org.apache.tuweni:tuweni-toml:2.3.1")
-    compileOnly(group = "org.ini4j", name = "ini4j", version = "0.5.4")
     testImplementation(kotlin("test"))
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
     intellijPlatform {
-        val type = properties("platformType")
-        val version = properties("platformVersion")
-        val bundledPlugins = properties("platformBundledPlugins").map { it.split(',').map(String::trim).filter(String::isNotEmpty) }
+//        val type = properties("platformType")
+//        val version = properties("platformVersion")
+        val bundledPlugins =
+            properties("platformBundledPlugins").map { it.split(',').map(String::trim).filter(String::isNotEmpty) }
 
-        create(type, version, useInstaller = false)
+//        create(type, version, useInstaller = false)
+        local(properties("localPath"))
         bundledPlugins(bundledPlugins)
         testFramework(TestFrameworkType.Bundled)
         pluginVerifier()
@@ -147,5 +153,28 @@ sourceSets {
     test {
         java.srcDir("testSrc")
         resources.srcDir("testData")
+    }
+}
+
+val localPath = properties("localPath").get()
+
+tasks.named<RunIdeTask>("runIde") {
+
+    val coreImplJars = fileTree("$localPath/Contents") {
+        include("**/*.jar")
+    }.filter { details ->
+        JarFile(details).use { jar ->
+            jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
+        }
+    }
+
+    if (coreImplJars.isEmpty) {
+        println("⚠️  core-impl JAR was not found")
+    } else {
+        classpath += coreImplJars
+        doFirst {
+            println("### added to classpath ###")
+            coreImplJars.files.forEach { println(it.path) }
+        }
     }
 }
