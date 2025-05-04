@@ -135,11 +135,17 @@ fun isHtmpy(pyFormattedStringElement: PyFormattedStringElement, typeEvalContext:
     val pyStringLiteralExpression = pyFormattedStringElement.parent as? PyStringLiteralExpression ?: return false
     val pyArgumentList = pyStringLiteralExpression.parent as? PyArgumentList ?: return false
     val pyCallExpression = pyArgumentList.parent as? PyCallExpression ?: return false
-    return pyCallExpression.multiResolveCalleeFunction(PyResolveContext.defaultContext(typeEvalContext)).any { pyFunction ->
+    val resolvedViewDomFunc = pyCallExpression.multiResolveCalleeFunction(PyResolveContext.defaultContext(typeEvalContext)).any { pyFunction ->
         typeEvalContext.getReturnType(pyFunction)?.let { pyType ->
             isQualifiedNamedType(pyType, listOf(VIEWDOM_NODE_Q_NAME))
         } ?: false
-    }}
+    }
+    if (resolvedViewDomFunc) true
+
+    // html = ...
+    val resolvedHtml = pyCallExpression.callee?.reference?.resolve() as? PyTargetExpression ?: return false
+    return resolvedHtml.qualifiedName == VIEWDOM_HTML_Q_NAME
+}
 
 fun isHtmpy(psiElement: PsiElement): Boolean = isViewDomHtm(psiElement) || isHtm(psiElement)
 
