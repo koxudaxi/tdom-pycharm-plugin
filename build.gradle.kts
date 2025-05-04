@@ -2,6 +2,8 @@ import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
+import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
+import org.jetbrains.intellij.platform.gradle.tasks.BuildSearchableOptionsTask
 import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import java.util.jar.JarFile
 
@@ -157,6 +159,19 @@ sourceSets {
 }
 
 val localPath = properties("localPath").get()
+
+val coreImplJars = fileTree("$localPath/Contents") {
+    include("**/*.jar")
+    exclude("**/*.jar.pack.lzma")   // avoid broken pseudo-JARs
+}.filter { file ->
+    JarFile(file).use { jar ->
+        jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
+    }
+}
+
+tasks.named<BuildSearchableOptionsTask>("buildSearchableOptions") {
+    classpath += coreImplJars
+}
 
 tasks.named<RunIdeTask>("runIde") {
 
