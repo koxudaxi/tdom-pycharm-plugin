@@ -11,18 +11,19 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiReference
-import com.intellij.psi.impl.source.resolve.FileContextUtil
-import com.intellij.psi.xml.XmlTokenType
 import com.intellij.util.ProcessingContext
 import com.jetbrains.python.PyNames
 import com.jetbrains.python.psi.PyClass
+import com.jetbrains.python.psi.PyFile
+import com.jetbrains.python.psi.PyFormattedStringElement
 import com.jetbrains.python.psi.PyFunction
+import com.jetbrains.python.psi.PyStringLiteralExpression
 import com.jetbrains.python.psi.PyUtil
 import com.koxudaxi.tdom.collectComponents
 import com.koxudaxi.tdom.getContextForCodeCompletion
 import com.koxudaxi.tdom.isHtmpy
 
-class TdomKeywordCompletionContributor : CompletionContributor() {
+class TdomKeywordFragmentCompletionContributor : CompletionContributor() {
     fun getName(name: String, parameters: CompletionParameters): String {
         return if (parameters.position.nextSibling?.nextSibling?.text?.first() == '=') {
             name
@@ -42,22 +43,25 @@ class TdomKeywordCompletionContributor : CompletionContributor() {
                     result: CompletionResultSet,
                 ) {
                     val position = parameters.position
-                    val type = position.node.elementType
-                    if (type !== XmlTokenType.XML_DATA_CHARACTERS && type !== XmlTokenType.XML_NAME) {
-                        return
-                    }
-                    val hostElement =
-                        position.parent.containingFile.getUserData(FileContextUtil.INJECTED_IN_ELEMENT)?.element as? com.jetbrains.python.psi.PyStringLiteralExpression
-                            ?: return
-                    val pyFormattedStringElement = hostElement.firstChild as? com.jetbrains.python.psi.PyFormattedStringElement
-                        ?: return
-                    val typeContext =
-                        getContextForCodeCompletion(pyFormattedStringElement)
-                    if (!isHtmpy(pyFormattedStringElement, typeContext)) return
+                    val containingFile = position.parent.containingFile
+                    if (containingFile !is PyFile) return
+                    val pyFormattedStringElement = position.parent as? PyFormattedStringElement ?: return
+                    val hostElement = pyFormattedStringElement.parent as? PyStringLiteralExpression ?: return
+                    val typeContext = getContextForCodeCompletion(pyFormattedStringElement)
+                    isHtmpy(pyFormattedStringElement, typeContext)
+
+//                    val hostElement =
+//                        position.parent.containingFile.getUserData(FileContextUtil.INJECTED_IN_ELEMENT)?.element as? com.jetbrains.python.psi.PyStringLiteralExpression
+//                            ?: return
+//                    val pyFormattedStringElement = hostElement.firstChild as? com.jetbrains.python.psi.PyFormattedStringElement
+//                        ?: return
+//                    val typeContext =
+//                        getContextForCodeCompletion(pyFormattedStringElement)
+//                    if (!isHtmpy(pyFormattedStringElement, typeContext)) return
                     collectComponents(
                         hostElement,
                         { resolvedComponent, tag, _, keys ->
-                            if (tag.range.contains(position.textOffset)) {
+                            if (tag.range.contains(position.startOffsetInParent)) {
                                 // For parameters
                                 when (resolvedComponent) {
                                     is PyClass -> {

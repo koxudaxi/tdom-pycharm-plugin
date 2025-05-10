@@ -14,6 +14,7 @@
                          language="Python"/>
 
         <completion.contributor implementationClass="com.koxudaxi.tdom.completion.TdomKeywordCompletionContributor" language="HTML"/>
+        <completion.contributor implementationClass="com.koxudaxi.tdom.completion.TdomKeywordFragmentCompletionContributor" language="Python"/>
         <completion.contributor implementationClass="com.koxudaxi.tdom.completion.TdomTagCompletionContributor" language="Python"/>
         <completion.contributor implementationClass="com.koxudaxi.tdom.completion.TdomComponentCompletionContributor" language="Python"/>
         <psi.referenceContributor implementation="com.koxudaxi.tdom.psi.HtmpyReferenceContributor"

@@ -156,7 +156,7 @@ fun collectComponents(
     actionForEmptyComponent: ((resolvedComponent: PyTypedElement, tag: MatchResult, component: MatchResult, keys: Map<String, MatchResult>) -> Unit)? = null,
     actionForTag: ((resolvedComponent: PyTypedElement?, tag: MatchResult, first: Int, last: Int) -> Unit)? = null,
     actionForUnTag: ((tag: MatchResult) -> Unit)? = null,
-    useStringValue: Boolean = false
+    useStringValue: Boolean = true
 
 ) {
     val text = if (useStringValue) pyStringLiteralExpression.stringValue else pyStringLiteralExpression.text
@@ -169,53 +169,53 @@ fun collectComponents(
     }
     results.forEach { element ->
         val tag = Regex("\\{([^}]*)}").findAll(element.value).firstOrNull()
-        if (tag != null) {
-            val owner = ScopeUtil.getScopeOwner(pyStringLiteralExpression)
-            if (tag.value.length > 2 && owner != null) {
-                val component =
-                    PyResolveUtil.resolveLocally(owner, tag.destructured.component1().trim()).firstOrNull()
-                        .let {
-                            when (it) {
-                                is PyImportElement -> {
-                                    PyUtil.filterTopPriorityResults(it.multiResolve())
-                                        .asSequence()
-                                        .map { result -> result.element }
-                                        .firstOrNull { element ->  when(element) {
-                                            is PyClass -> isDataclass(element)
-                                            is PyFunction -> true
-                                            else -> false
-                                        }
-                                        }
-                                }
-                                else -> (it as? PyClass)?.takeIf { pyClass -> isDataclass(pyClass) } ?: (it as? PyFunction)
+        if (tag == null) return@forEach
+        val owner = ScopeUtil.getScopeOwner(pyStringLiteralExpression)
+        if (tag.range.first == 0 || text[tag.range.first - 1] != '<') return@forEach
+        if (tag.value.length > 2 && owner != null) {
+            val component =
+                PyResolveUtil.resolveLocally(owner, tag.destructured.component1().trim()).firstOrNull()
+                    .let {
+                        when (it) {
+                            is PyImportElement -> {
+                                PyUtil.filterTopPriorityResults(it.multiResolve())
+                                    .asSequence()
+                                    .map { result -> result.element }
+                                    .firstOrNull { element ->  when(element) {
+                                        is PyClass -> isDataclass(element)
+                                        is PyFunction -> true
+                                        else -> false
+                                    }
+                                    }
                             }
+                            else -> (it as? PyClass)?.takeIf { pyClass -> isDataclass(pyClass) } ?: (it as? PyFunction)
                         }
+                    }
 
-                if (component is PyTypedElement) {
-                    val keys =
-                        (Regex("([^=}\\s]+)=(\\{[^\"]*})").findAll(element.value) + Regex("([^=}\\s]+)=([^\\s/]*)").findAll(element.value)
-                                + Regex("([^=}\\s]+)=\"([^\"]*)").findAll(element.value)
-                                )
-                            .map { key ->
-                                Pair(key.destructured.component1(), key)
-                            }.toMap()
-                    actionForComponent(component, element, tag, keys)
+            if (component is PyTypedElement) {
+                val keys =
+                    (Regex("([^=}\\s]+)=(\\{[^\"]*})").findAll(element.value) + Regex("([^=}\\s]+)=([^\\s/]*)").findAll(element.value)
+                            + Regex("([^=}\\s]+)=\"([^\"]*)").findAll(element.value)
+                            )
+                        .map { key ->
+                            Pair(key.destructured.component1(), key)
+                        }.toMap()
+                actionForComponent(component, element, tag, keys)
 
-                    val emptyKeys = Regex("([^=}\\s]+)=(\\s+)").findAll(element.value).map { key ->
-                        Pair(key.destructured.component1(), key)
-                    }.toMap()
-                    actionForEmptyComponent?.let { it(component, element, tag,  emptyKeys) }
-                } else {
-                    actionForComponent(null, element, tag, emptyMap())
-                }
-                if (actionForTag != null) {
-                    actionForTag(component as? PyTypedElement, tag, element.range.first + tag.range.first + 1, element.range.first + tag.range.last)
-                }
+                val emptyKeys = Regex("([^=}\\s]+)=(\\s+)").findAll(element.value).map { key ->
+                    Pair(key.destructured.component1(), key)
+                }.toMap()
+                actionForEmptyComponent?.let { it(component, element, tag,  emptyKeys) }
+            } else {
+//                    actionForComponent(null, element, tag, emptyMap())
             }
-            else {
-                if (actionForTag != null) {
-                    actionForTag(null, tag, element.range.first + tag.range.first + 1, element.range.first + tag.range.last)
-                }
+            if (actionForTag != null) {
+                actionForTag(component as? PyTypedElement, tag, element.range.first + tag.range.first + 1, element.range.first + tag.range.last)
+            }
+        }
+        else {
+            if (actionForTag != null) {
+                actionForTag(null, tag, element.range.first + tag.range.first + 1, element.range.first + tag.range.last)
             }
         }
     }

@@ -40,9 +40,9 @@ class TdomComponentCompletionContributor : CompletionContributor() {
                     val containingFile = position.parent.containingFile
                     if (containingFile !is PyFile) return
                     val pyFormattedStringElement = position.parent.parent.parent as? PyFormattedStringElement ?: return
-                    isHtmpy(pyFormattedStringElement, getContextForCodeCompletion(pyFormattedStringElement))
                     val typeContext = getContextForCodeCompletion(pyFormattedStringElement)
-                    if (!isHtmpy(pyFormattedStringElement, typeContext)) return
+                    isHtmpy(pyFormattedStringElement, typeContext)
+
                     resultSet.runRemainingContributors(parameters) { completionResult ->
                         val lookupElement = completionResult.lookupElement
                         when (lookupElement.psiElement as? PyCallable) {

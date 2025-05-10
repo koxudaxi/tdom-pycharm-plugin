@@ -25,6 +25,7 @@ class TdomInspection : PyInspection() {
             super.visitPyFormattedStringElement(node)
             if (!isHtmpy(node, myTypeEvalContext)) return
             val pyStringLiteralExpression = node.parent as? PyStringLiteralExpression ?: return
+            @Suppress("UnstableApiUsage") val prefixLength = node.literalPartRanges.count() - 1
             collectComponents(pyStringLiteralExpression, { resolvedComponent, tag, component, keys ->
                 when (resolvedComponent) {
                     is PyClass -> {
@@ -51,7 +52,7 @@ class TdomInspection : PyInspection() {
                         //                            }} }
                     }
                     else -> {
-                        val componentStart = tag.range.first + component.range.first
+                        val componentStart = tag.range.first + component.range.first + prefixLength
                         val actualComponent =
                             PyUtil.createExpressionFromFragment(component.value.substring(IntRange(1, component.value.length - 2)),
                                 node)
@@ -62,8 +63,8 @@ class TdomInspection : PyInspection() {
                                 ProblemHighlightType.GENERIC_ERROR,
                                 null,
                                 TextRange(
-                                    componentStart + 1,
-                                    componentStart + actualComponent.textLength + 1
+                                    componentStart,
+                                    componentStart + actualComponent.textLength
                                 )
                             )
                         }
@@ -74,14 +75,17 @@ class TdomInspection : PyInspection() {
                     if (argument is PyTypedElement) {
                         val value = key.destructured.component2()
                         if (value.isEmpty()) {
-                            val startPoint = tag.range.first + component.range.first + key.range.first
-                            registerProblem(
-                                node,
-                                "Expression expected",
-                                ProblemHighlightType.GENERIC_ERROR,
-                                null,
-                                TextRange(startPoint + name.length, startPoint + name.length + 1)
-                            )
+                            val startPoint = tag.range.first + component.range.first + key.range.first + prefixLength + 1
+                            val targetRange = TextRange(startPoint + name.length, startPoint + name.length + 1)
+                            if (targetRange.substring(node.text) != " ") {
+                                registerProblem(
+                                    node,
+                                    "Expression expected",
+                                    ProblemHighlightType.GENERIC_ERROR,
+                                    null,
+                                    TextRange(startPoint + name.length, startPoint + name.length + 1)
+                                )
+                            }
                         }
                         else {
                             val expectedType = myTypeEvalContext.getType(argument)
@@ -91,7 +95,7 @@ class TdomInspection : PyInspection() {
 
                             if (!PyTypeChecker.match(expectedType, actualType, myTypeEvalContext)
                             ) {
-                                val startPoint = tag.range.first + component.range.first
+                                val startPoint = tag.range.first + component.range.first + prefixLength - 1
                                 registerProblem(
                                     node, String.format(
                                         "Expected type '%s', got '%s' instead",
@@ -103,13 +107,13 @@ class TdomInspection : PyInspection() {
                                     ),
                                     ProblemHighlightType.WARNING,
                                     null,
-                                    TextRange(startPoint + key.range.first - 1, startPoint + key.range.last)
+                                    TextRange(startPoint + key.range.first, startPoint + key.range.last + 1)
                                 )
                             }
                         }
                     }
                     else {
-                        val startPoint = tag.range.first + component.range.first - 1 + key.range.first
+                        val startPoint = tag.range.first + component.range.first + key.range.first + prefixLength
                         registerProblem(
                             node,
                             "invalid a argument: '${name}'",
@@ -124,7 +128,7 @@ class TdomInspection : PyInspection() {
                 emptyKeys.forEach { (name, key) ->
                     val argument = getArgumentByName(resolvedComponent, name)
                     if (argument is PyTypedElement) {
-                        val startPoint = tag.range.first + component.range.first + key.range.first
+                        val startPoint = tag.range.first + component.range.first + key.range.first + prefixLength + 1
                         registerProblem(
                             node,
                             "Expression expected",
