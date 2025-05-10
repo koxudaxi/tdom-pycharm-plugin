@@ -13,15 +13,15 @@ import com.jetbrains.python.psi.types.PyUnionType
 import com.jetbrains.python.psi.types.TypeEvalContext
 
 const val HTM_HTM_Q_NAME = "htm.htm"
-const val VIEWDOM_H_HTML_Q_NAME = "viewdom.h.html"
-const val VIEWDOM_HTML_Q_NAME = "viewdom.html"
-const val VIEWDOM_HTML_Q_LAST = "html"
-const val VIEWDOM_NODE_Q_NAME = "viewdom.VDOMNode"
+const val TDOM_H_HTML_Q_NAME = "tdom.h.html"
+const val TDOM_HTML_Q_NAME = "tdom.html"
+const val TDOM_HTML_Q_LAST = "html"
+const val TDOM_NODE_Q_NAME = "tdom.VDOMNode"
 const val DATA_CLASS_Q_NAME = "dataclasses.dataclass"
 
 val HTM_HTM_QUALIFIED_NAME = QualifiedName.fromDottedString(HTM_HTM_Q_NAME)
-val VIEWDOM_H_HTML_QUALIFIED_NAME = QualifiedName.fromDottedString(VIEWDOM_H_HTML_Q_NAME)
-val VIEWDOM_HTML_QUALIFIED_NAME = QualifiedName.fromDottedString(VIEWDOM_HTML_Q_NAME)
+val VIEWDOM_H_HTML_QUALIFIED_NAME = QualifiedName.fromDottedString(TDOM_H_HTML_Q_NAME)
+val VIEWDOM_HTML_QUALIFIED_NAME = QualifiedName.fromDottedString(TDOM_HTML_Q_NAME)
 val DATA_CLASS_QUALIFIED_NAME = QualifiedName.fromDottedString(DATA_CLASS_Q_NAME)
 
 val DATA_CLASS_QUALIFIED_NAMES = listOf(
@@ -115,11 +115,11 @@ fun isHtm(context: PsiElement): Boolean {
     return multiResolveCalledDecoratedFunction(context, HTM_HTM_Q_NAME).any()
 }
 
-fun isViewDomHtm(context: PsiElement): Boolean {
+fun isTDomHtm(context: PsiElement): Boolean {
     val x =  multiResolveCalledPyTargetExpression(context,
-        VIEWDOM_HTML_Q_LAST,
+        TDOM_HTML_Q_LAST,
         0)
-    return x.any { it.qualifiedName == VIEWDOM_H_HTML_Q_NAME || it.qualifiedName == VIEWDOM_HTML_Q_NAME }
+    return x.any { it.qualifiedName == TDOM_H_HTML_Q_NAME || it.qualifiedName == TDOM_HTML_Q_NAME }
 }
 
 fun isQualifiedNamedType(pyType: PyType?, qualifiedNames: List<String>): Boolean {
@@ -135,19 +135,19 @@ fun isHtmpy(pyFormattedStringElement: PyFormattedStringElement, typeEvalContext:
     val pyStringLiteralExpression = pyFormattedStringElement.parent as? PyStringLiteralExpression ?: return false
     val pyArgumentList = pyStringLiteralExpression.parent as? PyArgumentList ?: return false
     val pyCallExpression = pyArgumentList.parent as? PyCallExpression ?: return false
-    val resolvedViewDomFunc = pyCallExpression.multiResolveCalleeFunction(PyResolveContext.defaultContext(typeEvalContext)).any { pyFunction ->
+    val resolvedTDomFunc = pyCallExpression.multiResolveCalleeFunction(PyResolveContext.defaultContext(typeEvalContext)).any { pyFunction ->
         typeEvalContext.getReturnType(pyFunction)?.let { pyType ->
-            isQualifiedNamedType(pyType, listOf(VIEWDOM_NODE_Q_NAME))
+            isQualifiedNamedType(pyType, listOf(TDOM_NODE_Q_NAME))
         } ?: false
     }
-    if (resolvedViewDomFunc) true
+    if (resolvedTDomFunc) true
 
     // html = ...
     val resolvedHtml = pyCallExpression.callee?.reference?.resolve() as? PyTargetExpression ?: return false
-    return resolvedHtml.qualifiedName == VIEWDOM_HTML_Q_NAME
+    return resolvedHtml.qualifiedName == TDOM_HTML_Q_NAME
 }
 
-fun isHtmpy(psiElement: PsiElement): Boolean = isViewDomHtm(psiElement) || isHtm(psiElement)
+fun isHtmpy(psiElement: PsiElement): Boolean = isTDomHtm(psiElement) || isHtm(psiElement)
 
 
 fun collectComponents(
