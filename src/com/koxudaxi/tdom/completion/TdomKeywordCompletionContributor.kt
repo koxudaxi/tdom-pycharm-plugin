@@ -1,5 +1,8 @@
 package com.koxudaxi.tdom.completion
 
+import com.intellij.codeInsight.completion.CompletionContributor
+import com.intellij.codeInsight.completion.CompletionParameters
+import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.codeInsight.lookup.LookupElement
@@ -10,14 +13,16 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.xml.XmlTokenType
 import com.jetbrains.python.PyNames
+import com.jetbrains.python.psi.PyClass
+import com.jetbrains.python.psi.PyFunction
 import com.jetbrains.python.psi.PyUtil
 import com.koxudaxi.tdom.collectComponents
 import com.koxudaxi.tdom.getContextForCodeCompletion
 import com.koxudaxi.tdom.isHtmpy
 
-class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.CompletionContributor() {
-    fun getName(name: String, parameters: com.intellij.codeInsight.completion.CompletionParameters): String {
-        return if (parameters.position.nextSibling.nextSibling.text.first() == '=') {
+class TdomKeywordCompletionContributor : CompletionContributor() {
+    fun getName(name: String, parameters: CompletionParameters): String {
+        return if (parameters.position.nextSibling?.nextSibling?.text?.first() == '=') {
             name
         } else {
             "$name="
@@ -27,7 +32,8 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
         extend(
             CompletionType.BASIC,
             PlatformPatterns.psiElement(),
-            object : com.intellij.codeInsight.completion.CompletionProvider<com.intellij.codeInsight.completion.CompletionParameters>() {
+            object : CompletionProvider<CompletionParameters>() {
+                @Suppress("UnstableApiUsage")
                 override fun addCompletions(
                     parameters: com.intellij.codeInsight.completion.CompletionParameters,
                     context: com.intellij.util.ProcessingContext,
@@ -35,7 +41,7 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
                 ) {
                     val position = parameters.position
                     val type = position.node.elementType
-                    if (type !== XmlTokenType.XML_DATA_CHARACTERS) {
+                    if (type !== XmlTokenType.XML_DATA_CHARACTERS && type !== XmlTokenType.XML_NAME) {
                         return
                     }
                     val hostElement =
@@ -52,7 +58,7 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
                             if (tag.range.contains(position.textOffset)) {
                                 // For parameters
                                 when (resolvedComponent) {
-                                    is com.jetbrains.python.psi.PyClass -> {
+                                    is PyClass -> {
                                         resolvedComponent.classAttributes.filter { instanceAttribute ->
                                             !instanceAttribute.hasAssignedValue() && !keys.contains(instanceAttribute.name)
                                         }
@@ -82,7 +88,8 @@ class TdomKeywordCompletionContributor : com.intellij.codeInsight.completion.Com
                                     }
 
                                     else -> {
-                                        (resolvedComponent as com.jetbrains.python.psi.PyFunction).parameterList.parameters.filter { parameter ->
+                                        val pyFunction = resolvedComponent as? PyFunction ?: return@collectComponents
+                                        pyFunction.parameterList.parameters.filter { parameter ->
                                             !parameter.hasDefaultValue() && !keys.contains(parameter.name)
                                         }
                                             .mapNotNull { validKey -> validKey.name }
