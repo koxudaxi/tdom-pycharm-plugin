@@ -11,6 +11,7 @@ import com.jetbrains.python.inspections.PyInspectionVisitor
 import com.jetbrains.python.psi.*
 import com.jetbrains.python.psi.types.*
 
+@Suppress("UnstableApiUsage")
 class TdomInspection : PyInspection() {
 
     override fun buildVisitor(
@@ -28,28 +29,26 @@ class TdomInspection : PyInspection() {
             @Suppress("UnstableApiUsage") val prefixLength = node.literalPartRanges.count() - 1
             collectComponents(pyStringLiteralExpression, { resolvedComponent, tag, component, keys ->
                 when (resolvedComponent) {
-                    is PyClass -> {
-                        //                        resolvedComponent.classAttributes.forEach { classAttribute ->
-                        //                            val name = classAttribute.name
-                        //                            if (!classAttribute.hasAssignedValue() && !keys.contains(name) && name is String) {
-                        //                                val field = PyDataclassFieldStubImpl.create(classAttribute)
-                        //                                if (!(field is PyDataclassFieldStub && !field.initValue()) && (myTypeEvalContext.getType(
-                        //                                        classAttribute
-                        //                                    ) as? PyUnionType)?.members?.any { it is PyNoneType } != true
-                        //                                ) {
-                        //                                    warnMissingRequiredArgument(node, name, tag, component)
-                        //                                }
-                        //                            }
-                        //                        }
-                    }
+//                    is PyClass -> {
+//                                                resolvedComponent.classAttributes.forEach { classAttribute ->
+//                                                    val name = classAttribute.name
+//                                                    if (!classAttribute.hasAssignedValue() && !keys.contains(name) && name is String) {
+//                                                        val field = PyDataclassFieldStubImpl.create(classAttribute)
+//                                                        if (!(field is PyDataclassFieldStub && !field.initValue()) && (myTypeEvalContext.getType(
+//                                                                classAttribute
+//                                                            ) as? PyUnionType)?.members?.any { it != null } != true
+//                                                        ) {
+//                                                            warnMissingRequiredArgument(node, name, tag, component)
+//                                                        }
+//                                                    }
+//                                                }
+//                    }
                     is PyCallable -> {
-                        //                            resolvedComponent.parameterList.parameters.filterIsInstance<PyNamedParameter>().forEach { parameter ->
-                        //                                val name = parameter.name
-                        //                                if (!parameter.hasDefaultValue() && !keys.contains(name) && name is String) {
-                        //                                if ((myTypeEvalContext.getType(parameter) as? PyUnionType)?.members?.any { it is PyNoneType } != true
-                        //                                ) {
-                        //                                    warnMissingRequiredArgument(node, name, tag, component)
-                        //                            }} }
+                                                    resolvedComponent.parameterList.parameters.filterIsInstance<PyNamedParameter>().forEach { parameter ->
+                                                        val name = parameter.name
+                                                        if (!parameter.hasDefaultValue() && !keys.contains(name) && name is String) {
+                                                            warnMissingRequiredArgument(node, name, tag, component, prefixLength)
+                                                    }}
                     }
                     else -> {
                         val componentStart = tag.range.first + component.range.first + prefixLength
@@ -83,7 +82,7 @@ class TdomInspection : PyInspection() {
                                     "Expression expected",
                                     ProblemHighlightType.GENERIC_ERROR,
                                     null,
-                                    TextRange(startPoint + name.length, startPoint + name.length + 1)
+                                    targetRange
                                 )
                             }
                         }
@@ -151,15 +150,15 @@ class TdomInspection : PyInspection() {
                 else -> null
             }
         }
-        private fun warnMissingRequiredArgument(node: PyStringLiteralExpression, name: String, tag: MatchResult, component: MatchResult) {
+        private fun warnMissingRequiredArgument(node: PyFormattedStringElement, name: String, tag: MatchResult, component: MatchResult, prefixLength: Int) {
             registerProblem(
                 node,
                 "missing a required argument: '${name}'",
                 ProblemHighlightType.WARNING,
                 null,
                 TextRange(
-                    tag.range.first + component.range.first + 1,
-                    component.value.length + tag.range.first
+                    tag.range.first + component.range.first + 2 + prefixLength,
+                    component.value.length + tag.range.first + prefixLength + 1
                 )
             )
         }
