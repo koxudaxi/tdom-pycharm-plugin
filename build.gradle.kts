@@ -132,13 +132,13 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
     intellijPlatform {
-//        val type = properties("platformType")
-//        val version = properties("platformVersion")
+        val type = properties("platformType")
+        val version = properties("platformVersion")
         val bundledPlugins =
             properties("platformBundledPlugins").map { it.split(',').map(String::trim).filter(String::isNotEmpty) }
 
-//        create(type, version, useInstaller = false)
-        local(properties("localPath"))
+        create(type, version, useInstaller = false)
+//        local(properties("localPath"))
         bundledPlugins(bundledPlugins)
         testFramework(TestFrameworkType.Bundled)
         pluginVerifier()
@@ -158,38 +158,38 @@ sourceSets {
     }
 }
 
-val localPath = properties("localPath").get()
+//val localPath = properties("localPath").get()
 
-val coreImplJars = fileTree("$localPath/Contents") {
-    include("**/*.jar")
-    exclude("**/*.jar.pack.lzma")   // avoid broken pseudo-JARs
-}.filter { file ->
-    JarFile(file).use { jar ->
-        jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
-    }
-}
+//val coreImplJars = fileTree("$localPath/Contents") {
+//    include("**/*.jar")
+//    exclude("**/*.jar.pack.lzma")   // avoid broken pseudo-JARs
+//}.filter { file ->
+//    JarFile(file).use { jar ->
+//        jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
+//    }
+//}
 
-tasks.named<BuildSearchableOptionsTask>("buildSearchableOptions") {
-    classpath += coreImplJars
-}
+//tasks.named<BuildSearchableOptionsTask>("buildSearchableOptions") {
+//    classpath += coreImplJars
+//}
 
-tasks.named<RunIdeTask>("runIde") {
-
-    val coreImplJars = fileTree("$localPath/Contents") {
-        include("**/*.jar")
-    }.filter { details ->
-        JarFile(details).use { jar ->
-            jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
-        }
-    }
-
-    if (coreImplJars.isEmpty) {
-        println("⚠️  core-impl JAR was not found")
-    } else {
-        classpath += coreImplJars
-        doFirst {
-            println("### added to classpath ###")
-            coreImplJars.files.forEach { println(it.path) }
-        }
-    }
-}
+//tasks.named<RunIdeTask>("runIde") {
+//
+//    val coreImplJars = fileTree("$localPath/Contents") {
+//        include("**/*.jar")
+//    }.filter { details ->
+//        JarFile(details).use { jar ->
+//            jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
+//        }
+//    }
+//
+//    if (coreImplJars.isEmpty) {
+//        println("⚠️  core-impl JAR was not found")
+//    } else {
+//        classpath += coreImplJars
+//        doFirst {
+//            println("### added to classpath ###")
+//            coreImplJars.files.forEach { println(it.path) }
+//        }
+//    }
+//}
