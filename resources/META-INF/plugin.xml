@@ -1,6 +1,10 @@
 <idea-plugin url="https://github.com/koxudaxi/tdom-pycharm-plugin">
     <id>com.koxudaxi.tdom</id>
     <name>Tdom</name>
+    <description><![CDATA[
+        Provides PyCharm support for TDOM templates, including language injections,
+        inspections, references, and completions for Python and HTML files.
+    ]]></description>
     <vendor email="koaxudai@gmail.com">Koudai Aono @koxudaxi</vendor>
 
     <depends>com.intellij.modules.lang</depends>
