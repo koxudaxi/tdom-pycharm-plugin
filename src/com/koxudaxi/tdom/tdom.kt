@@ -15,8 +15,8 @@ import com.jetbrains.python.psi.types.TypeEvalContext
 const val HTM_HTM_Q_NAME = "htm.htm"
 const val TDOM_H_HTML_Q_NAME = "tdom.h.html"
 const val TDOM_HTML_Q_NAME = "tdom.html"
+const val TDOM_PROCESSOR_HTML_Q_NAME = "tdom.processor.html"
 const val TDOM_HTML_Q_LAST = "html"
-const val TDOM_NODE_Q_NAME = "tdom.VDOMNode"
 const val DATA_CLASS_Q_NAME = "dataclasses.dataclass"
 
 val HTM_HTM_QUALIFIED_NAME = QualifiedName.fromDottedString(HTM_HTM_Q_NAME)
@@ -137,14 +137,18 @@ fun isHtmpy(pyFormattedStringElement: PyFormattedStringElement, typeEvalContext:
     val pyCallExpression = pyArgumentList.parent as? PyCallExpression ?: return false
     val resolvedTDomFunc = pyCallExpression.multiResolveCalleeFunction(PyResolveContext.defaultContext(typeEvalContext)).any { pyFunction ->
         typeEvalContext.getReturnType(pyFunction)?.let { pyType ->
-            isQualifiedNamedType(pyType, listOf(TDOM_NODE_Q_NAME))
+            isQualifiedNamedType(pyType, listOf(TDOM_PROCESSOR_HTML_Q_NAME))
         } ?: false
     }
     if (resolvedTDomFunc) true
 
     // html = ...
-    val resolvedHtml = pyCallExpression.callee?.reference?.resolve() as? PyTargetExpression ?: return false
-    return resolvedHtml.qualifiedName == TDOM_HTML_Q_NAME
+    val resolvedHtml = pyCallExpression.callee?.reference?.resolve()
+    return if (resolvedHtml is PyFunction || resolvedHtml is PyTargetExpression) {
+        resolvedHtml.qualifiedName == TDOM_PROCESSOR_HTML_Q_NAME
+    } else {
+        false
+    }
 }
 
 fun isHtmpy(psiElement: PsiElement): Boolean = isTDomHtm(psiElement) || isHtm(psiElement)
