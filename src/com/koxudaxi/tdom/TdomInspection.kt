@@ -55,18 +55,18 @@ class TdomInspection : PyInspection() {
                         val actualComponent =
                             PyUtil.createExpressionFromFragment(component.value.substring(IntRange(1, component.value.length - 2)),
                                 node)
-                        if (actualComponent != null) {
-                            registerProblem(
-                                node,
-                                "Component should be a callable",
-                                ProblemHighlightType.GENERIC_ERROR,
-                                null,
-                                TextRange(
-                                    componentStart,
-                                    componentStart + actualComponent.textLength
-                                )
-                            )
-                        }
+//                        if (actualComponent != null) {
+//                            registerProblem(
+//                                node,
+//                                "Component should be a callable",
+//                                ProblemHighlightType.GENERIC_ERROR,
+//                                null,
+//                                TextRange(
+//                                    componentStart,
+//                                    componentStart + actualComponent.textLength
+//                                )
+//                            )
+//                        }
                     }
                 }
                 keys.forEach { (name, key) ->
