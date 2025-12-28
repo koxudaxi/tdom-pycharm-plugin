@@ -16,8 +16,23 @@ const val HTM_HTM_Q_NAME = "htm.htm"
 const val TDOM_H_HTML_Q_NAME = "tdom.h.html"
 const val TDOM_HTML_Q_NAME = "tdom.html"
 const val TDOM_PROCESSOR_HTML_Q_NAME = "tdom.processor.html"
+const val TDOM_NODES_NODE_Q_NAME = "tdom.nodes.Node"
+const val TDOM_NODE_Q_NAME = "tdom.Node"
 const val TDOM_HTML_Q_LAST = "html"
 const val DATA_CLASS_Q_NAME = "dataclasses.dataclass"
+
+// All qualified names for tdom html function
+val TDOM_HTML_QUALIFIED_NAMES = listOf(
+    TDOM_HTML_Q_NAME,
+    TDOM_PROCESSOR_HTML_Q_NAME
+)
+
+// All qualified names for tdom Node return type
+val TDOM_NODE_QUALIFIED_NAMES = listOf(
+    TDOM_NODES_NODE_Q_NAME,
+    TDOM_NODE_Q_NAME,
+    TDOM_PROCESSOR_HTML_Q_NAME
+)
 
 val HTM_HTM_QUALIFIED_NAME = QualifiedName.fromDottedString(HTM_HTM_Q_NAME)
 val VIEWDOM_H_HTML_QUALIFIED_NAME = QualifiedName.fromDottedString(TDOM_H_HTML_Q_NAME)
@@ -135,17 +150,20 @@ fun isHtmpy(pyFormattedStringElement: PyFormattedStringElement, typeEvalContext:
     val pyStringLiteralExpression = pyFormattedStringElement.parent as? PyStringLiteralExpression ?: return false
     val pyArgumentList = pyStringLiteralExpression.parent as? PyArgumentList ?: return false
     val pyCallExpression = pyArgumentList.parent as? PyCallExpression ?: return false
+
+    // Check if the callee is a function that returns tdom.nodes.Node
     val resolvedTDomFunc = pyCallExpression.multiResolveCalleeFunction(PyResolveContext.defaultContext(typeEvalContext)).any { pyFunction ->
         typeEvalContext.getReturnType(pyFunction)?.let { pyType ->
-            isQualifiedNamedType(pyType, listOf(TDOM_PROCESSOR_HTML_Q_NAME))
+            isQualifiedNamedType(pyType, listOf(TDOM_PROCESSOR_HTML_Q_NAME, TDOM_NODES_NODE_Q_NAME))
         } ?: false
     }
-    if (resolvedTDomFunc) true
+    if (resolvedTDomFunc) return true
 
     // html = ...
     val resolvedHtml = pyCallExpression.callee?.reference?.resolve()
     return if (resolvedHtml is PyFunction || resolvedHtml is PyTargetExpression) {
-        resolvedHtml.qualifiedName == TDOM_PROCESSOR_HTML_Q_NAME
+        resolvedHtml.qualifiedName == TDOM_PROCESSOR_HTML_Q_NAME ||
+        resolvedHtml.qualifiedName == TDOM_HTML_Q_NAME
     } else {
         false
     }
