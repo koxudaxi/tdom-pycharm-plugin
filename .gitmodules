@@ -1,0 +1,4 @@
+[submodule "tdom"]
+	path = tdom
+	url = https://github.com/pauleveritt/tdom.git
+	branch = specification

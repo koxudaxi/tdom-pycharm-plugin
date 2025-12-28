@@ -2,10 +2,6 @@ import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
-import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
-import org.jetbrains.intellij.platform.gradle.tasks.BuildSearchableOptionsTask
-import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
-import java.util.jar.JarFile
 
 fun properties(key: String) = providers.gradleProperty(key)
 fun environment(key: String) = providers.environmentVariable(key)
@@ -26,22 +22,20 @@ version = properties("pluginVersion").get()
 // Configure project's dependencies
 repositories {
     mavenCentral()
-    maven("https://oss.sonatype.org/content/repositories/snapshots/")
     intellijPlatform {
         defaultRepositories()
-        localPlatformArtifacts()
         snapshots()
     }
 }
 
-// Set the JVM language level used to build the project. Java 17 for 2022.2+.
+// Set the JVM language level used to build the project. Java 21 for 2025.2+.
 kotlin {
     jvmToolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
         @Suppress("UnstableApiUsage")
         vendor = JvmVendorSpec.JETBRAINS
     }
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 // Configure Gradle IntelliJ Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
@@ -126,6 +120,44 @@ tasks {
     wrapper {
         gradleVersion = properties("gradleVersion").get()
     }
+    // buildSearchableOptions launches a headless IDE instance and fails if another PyCharm instance
+    // is running with the same config/system dirs. Plugins don't require searchable options, so
+    // disable by default and allow opt-in via -PbuildSearchableOptionsEnabled=true.
+    val buildSearchableOptionsEnabled =
+        providers.gradleProperty("buildSearchableOptionsEnabled").map(String::toBoolean).orElse(false)
+    named("buildSearchableOptions") {
+        enabled = buildSearchableOptionsEnabled.get()
+    }
+    // Workaround for IntelliJ Platform 2025.3 lib/modules issue
+    test {
+        doFirst {
+            // Find the Python plugin helpers directory dynamically
+            val pythonPluginDir = project.configurations
+                .named("intellijPlatformDependency")
+                .get()
+                .resolvedConfiguration
+                .resolvedArtifacts
+                .flatMap { artifact ->
+                    val file = artifact.file
+                    if (file.isDirectory) {
+                        file.walkTopDown()
+                            .filter { it.name == "python-ce" && it.isDirectory }
+                            .toList()
+                    } else {
+                        emptyList()
+                    }
+                }
+                .firstOrNull()
+
+            pythonPluginDir?.let {
+                val helpersPath = it.resolve("helpers")
+                if (helpersPath.exists()) {
+                    systemProperty("idea.python.helpers.path", helpersPath.absolutePath)
+                    logger.lifecycle("Set idea.python.helpers.path to: ${helpersPath.absolutePath}")
+                }
+            }
+        }
+    }
 }
 dependencies {
     testImplementation(kotlin("test"))
@@ -134,17 +166,20 @@ dependencies {
     intellijPlatform {
         val type = properties("platformType")
         val version = properties("platformVersion")
-        val bundledPlugins =
-            properties("platformBundledPlugins").map { it.split(',').map(String::trim).filter(String::isNotEmpty) }
-
-        create(type, version, useInstaller = false)
-//        local(properties("localPath"))
-        bundledPlugins(bundledPlugins)
+        val bundledPlugins = properties("platformBundledPlugins").map { it.split(',').map(String::trim).filter(String::isNotEmpty) }
+        val bundledPyCharmPlugin = when (type.get()) {
+            "PY" -> "Pythonid"
+            else -> "PythonCore"
+        }
+        // Use pycharm() for PyCharm 2025.3+ (unified distribution)
+        pycharm(version)
+        bundledPlugins(
+            bundledPlugins.get().map { it.trim() } + listOf(bundledPyCharmPlugin)
+        )
         testFramework(TestFrameworkType.Bundled)
         pluginVerifier()
         zipSigner()
     }
-    implementation(kotlin("stdlib-jdk8"))
 }
 
 sourceSets {
@@ -157,39 +192,3 @@ sourceSets {
         resources.srcDir("testData")
     }
 }
-
-//val localPath = properties("localPath").get()
-
-//val coreImplJars = fileTree("$localPath/Contents") {
-//    include("**/*.jar")
-//    exclude("**/*.jar.pack.lzma")   // avoid broken pseudo-JARs
-//}.filter { file ->
-//    JarFile(file).use { jar ->
-//        jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
-//    }
-//}
-
-//tasks.named<BuildSearchableOptionsTask>("buildSearchableOptions") {
-//    classpath += coreImplJars
-//}
-
-//tasks.named<RunIdeTask>("runIde") {
-//
-//    val coreImplJars = fileTree("$localPath/Contents") {
-//        include("**/*.jar")
-//    }.filter { details ->
-//        JarFile(details).use { jar ->
-//            jar.getEntry("com/intellij/platform/core/nio/fs/MultiRoutingFileSystemProvider.class") != null
-//        }
-//    }
-//
-//    if (coreImplJars.isEmpty) {
-//        println("⚠️  core-impl JAR was not found")
-//    } else {
-//        classpath += coreImplJars
-//        doFirst {
-//            println("### added to classpath ###")
-//            coreImplJars.files.forEach { println(it.path) }
-//        }
-//    }
-//}
